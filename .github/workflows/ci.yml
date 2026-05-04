@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      Solution_Name: Finance.NET.sln   # ⚠️ changed from .slnx
+      Solution_Name: Finance.NET.sln   
       Test_Project_Path: tests/Tests.csproj
       FORCE_COLOR: "true"
       DOTNET_LOGGING__CONSOLE__COLORBEHAVIOR: Enabled
@@ -26,7 +26,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    # ✅ Faster builds with caching
+    
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -38,10 +38,10 @@ jobs:
         dotnet tool install --global dotnet-reportgenerator-globaltool
 
     - name: Restore
-      run: dotnet restore "${{ env.Solution_Name }}"
+      run: dotnet restore 
 
     - name: Build
-      run: dotnet build "${{ env.Solution_Name }}" --configuration Release --no-restore
+      run: dotnet build --configuration Release --no-restore
 
     - name: Test with coverage
       env:
