@@ -17,30 +17,28 @@ permissions:
 jobs:
 
 # =========================
-# FAST CI (MAIN PIPELINE)
+# FAST CI 
 # =========================
   fast-ci:
-    name: Fast CI (Unit Tests)
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Setup .NET (cached)
+    - name: Setup .NET (with cache)
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
         cache: true
 
-    
     - name: Restore
       run: dotnet restore
 
     - name: Build
       run: dotnet build -c Release --no-restore
 
-    - name: Unit Tests (FAST ONLY)
+    - name: Run Unit Tests (FAST ONLY)
       run: |
         dotnet test \
           -c Release \
@@ -48,10 +46,9 @@ jobs:
           --filter "Category!=Integration&TestCategory!=Long-Running"
 
 # =========================
-#  INTEGRATION TESTS (NIGHTLY ONLY)
+# INTEGRATION TESTS (NIGHTLY ONLY)
 # =========================
   integration-tests:
-    name: Integration Tests
     runs-on: ubuntu-latest
     if: github.event_name != 'push'
 
@@ -63,9 +60,11 @@ jobs:
         dotnet-version: 8.0.x
         cache: true
 
-    - run: dotnet restore
+    - name: Restore
+      run: dotnet restore
 
-    - run: |
+    - name: Run Integration Tests
+      run: |
         dotnet test \
           -c Release \
           --no-build \
@@ -75,7 +74,6 @@ jobs:
 # COVERAGE 
 # =========================
   coverage:
-    name: Coverage Report
     runs-on: ubuntu-latest
     needs: fast-ci
 
@@ -87,9 +85,10 @@ jobs:
         dotnet-version: 8.0.x
         cache: true
 
-    - run: dotnet restore
+    - name: Restore
+      run: dotnet restore
 
-    - name: Run Tests with Coverage (UNIT ONLY)
+    - name: Run Tests with Coverage
       run: |
         dotnet test \
           -c Release \
@@ -108,7 +107,7 @@ jobs:
           -targetdir:./TestResults/Reports \
           -reporttypes:"lcov;Cobertura;Html"
 
-    - name: Upload Coverage Artifact
+    - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: coverage-report
