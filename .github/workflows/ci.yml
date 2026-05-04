@@ -5,7 +5,7 @@ on:
     branches: [main]
 
   schedule:
-    - cron: '0 2 * * *'   # nightly full run (UTC)
+    - cron: '0 2 * * *'
 
   workflow_dispatch:
 
@@ -17,7 +17,7 @@ permissions:
 jobs:
 
 # =========================
-# ⚡ FAST CI (MAIN PIPELINE)
+# FAST CI (MAIN PIPELINE)
 # =========================
   fast-ci:
     name: Fast CI (Unit Tests)
@@ -27,20 +27,20 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Setup .NET (with cache)
+    - name: Setup .NET (cached)
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
         cache: true
 
-    # 🔒 Deterministic restore (requires packages.lock.json)
-    - name: Restore (locked mode)
-      run: dotnet restore --locked-mode
+    
+    - name: Restore
+      run: dotnet restore
 
-    - name: Build (no restore)
+    - name: Build
       run: dotnet build -c Release --no-restore
 
-    - name: Run Unit Tests (FAST ONLY)
+    - name: Unit Tests (FAST ONLY)
       run: |
         dotnet test \
           -c Release \
@@ -48,7 +48,7 @@ jobs:
           --filter "Category!=Integration&TestCategory!=Long-Running"
 
 # =========================
-# 🧪 INTEGRATION TESTS (NIGHTLY ONLY)
+#  INTEGRATION TESTS (NIGHTLY ONLY)
 # =========================
   integration-tests:
     name: Integration Tests
@@ -56,27 +56,23 @@ jobs:
     if: github.event_name != 'push'
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Setup .NET (with cache)
-      uses: actions/setup-dotnet@v4
+    - uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
         cache: true
 
-    - name: Restore (locked mode)
-      run: dotnet restore --locked-mode
+    - run: dotnet restore
 
-    - name: Run Integration Tests (SLOW)
-      run: |
+    - run: |
         dotnet test \
           -c Release \
           --no-build \
           --filter "Category=Integration"
 
 # =========================
-# 📊 COVERAGE (FAST, NO DUPLICATION)
+# COVERAGE 
 # =========================
   coverage:
     name: Coverage Report
@@ -84,17 +80,14 @@ jobs:
     needs: fast-ci
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Setup .NET (with cache)
-      uses: actions/setup-dotnet@v4
+    - uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
         cache: true
 
-    - name: Restore (locked mode)
-      run: dotnet restore --locked-mode
+    - run: dotnet restore
 
     - name: Run Tests with Coverage (UNIT ONLY)
       run: |
@@ -105,7 +98,7 @@ jobs:
           --collect:"XPlat Code Coverage" \
           --results-directory ./TestResults
 
-    - name: Install report generator
+    - name: Install Report Generator
       run: dotnet tool install --global dotnet-reportgenerator-globaltool
 
     - name: Generate Coverage Report
