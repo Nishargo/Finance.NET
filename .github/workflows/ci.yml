@@ -1,5 +1,5 @@
 name: CI
- 
+
 on:
   push:
     branches: [main]
@@ -17,7 +17,7 @@ permissions:
 jobs:
 
 # =========================
-# FAST CI 
+# ⚡ FAST CI (MAIN PIPELINE)
 # =========================
   fast-ci:
     name: Fast CI (Unit Tests)
@@ -33,7 +33,7 @@ jobs:
         dotnet-version: 8.0.x
         cache: true
 
-    # Deterministic restore
+    # 🔒 Deterministic restore (requires packages.lock.json)
     - name: Restore (locked mode)
       run: dotnet restore --locked-mode
 
@@ -48,7 +48,7 @@ jobs:
           --filter "Category!=Integration&TestCategory!=Long-Running"
 
 # =========================
-# INTEGRATION TESTS (NIGHTLY ONLY)
+# 🧪 INTEGRATION TESTS (NIGHTLY ONLY)
 # =========================
   integration-tests:
     name: Integration Tests
@@ -76,7 +76,7 @@ jobs:
           --filter "Category=Integration"
 
 # =========================
-# COVERAGE 
+# 📊 COVERAGE (FAST, NO DUPLICATION)
 # =========================
   coverage:
     name: Coverage Report
