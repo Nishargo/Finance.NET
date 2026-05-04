@@ -3,8 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
+
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '0 2 * * *'   # nightly full run
+
   workflow_dispatch:
 
 permissions:
@@ -13,54 +15,112 @@ permissions:
   checks: write
 
 jobs:
-  build:
+
+# =========================
+# ⚡ FAST CI (PR / PUSH)
+# =========================
+  fast-ci:
+    name: Fast CI (Unit Tests)
     runs-on: ubuntu-latest
 
     env:
-      Solution_Name: Finance.NET.sln   
-      Test_Project_Path: tests/Tests.csproj
+      Solution_Name: Finance.NET.sln
       FORCE_COLOR: "true"
-      DOTNET_LOGGING__CONSOLE__COLORBEHAVIOR: Enabled
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
-        
+
+    - name: Restore
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Unit Tests Only (FAST)
+      run: |
+        dotnet test \
+          --configuration Release \
+          --no-build \
+          --filter "Category!=Integration&TestCategory!=Long-Running"
+
+# =========================
+# 🧪 INTEGRATION TESTS
+# (ONLY nightly or manual)
+# =========================
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push'   # only schedule/manual
+
+    env:
+      Test_Project_Path: tests/Tests.csproj
+      FinanceNet__AlphaVantageApiKey: ${{ secrets.ALPHAVANTAGEAPIKEY }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Restore
+      run: dotnet restore
+
+    - name: Run Integration Tests (SLOW)
+      run: |
+        dotnet test "${{ env.Test_Project_Path }}" \
+          --configuration Release \
+          --no-build \
+          --filter "Category=Integration"
+
+# =========================
+# 📊 COVERAGE + REPORTS
+# =========================
+  coverage:
+    name: Coverage & Reports
+    runs-on: ubuntu-latest
+    needs: fast-ci
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
 
     - name: Install tools
       run: |
         dotnet tool install --global dotnet-reportgenerator-globaltool
 
-    - name: Restore
-      run: dotnet restore 
-
-    - name: Build
-      run: dotnet build --configuration Release --no-restore
-
     - name: Test with coverage
-      env:
-        FinanceNet__AlphaVantageApiKey: ${{ secrets.ALPHAVANTAGEAPIKEY }}
       run: |
-        dotnet test "${{ env.Test_Project_Path }}" \
+        dotnet test \
           --configuration Release \
-          --no-build \
           --collect:"XPlat Code Coverage" \
-          --results-directory ./TestResults/Tests \
-          --logger "console;verbosity=detailed" \
-          --filter "TestCategory!=Long-Running&FullyQualifiedName!~AlphaVantageTests"
+          --results-directory ./TestResults
 
     - name: Generate coverage report
       run: |
         reportgenerator \
-          -reports:./TestResults/Tests/**/coverage.cobertura.xml \
+          -reports:./TestResults/**/coverage.cobertura.xml \
           -targetdir:./TestResults/Reports \
           -reporttypes:"Html;lcov;Cobertura"
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: ./TestResults/Reports
 
     - name: Upload to Coveralls
       uses: coverallsapp/github-action@v2
@@ -68,9 +128,3 @@ jobs:
         path-to-lcov: ./TestResults/Reports/lcov.info
       env:
         COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: unit-test-coverage-report
-        path: ./TestResults/Reports
